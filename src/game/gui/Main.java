@@ -10,7 +10,6 @@ public class Main extends Application {
 
     @Override
     public void start(Stage primaryStage) throws Exception {
-        // Matches your capitalized GUI folder
         Parent root = FXMLLoader.load(getClass().getResource("GUI.fxml"));
 
         primaryStage.setTitle("DooR DasH: Scare vs Laugh");
