@@ -2,6 +2,8 @@ package game.engine.cards;
 
 import game.engine.monsters.Monster;
 
+//test
+
 public abstract class Card {
 	private String name;
 	private String description;
