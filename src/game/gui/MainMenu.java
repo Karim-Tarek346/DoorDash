@@ -69,18 +69,20 @@ public class MainMenu extends Application {
 
         root.getChildren().addAll(background, veil, content);
 
-        Scene scene = new Scene(root, SCENE_W, SCENE_H);
+        Scene scalableScene = game.gui.util.ResolutionScaler.createScalableScene(root, SCENE_W, SCENE_H);
+        stage.setScene(scalableScene);
         if (background.getImage() != null) {
-            background.fitWidthProperty().bind(scene.widthProperty());
-            background.fitHeightProperty().bind(scene.heightProperty());
+            background.fitWidthProperty().bind(scalableScene.widthProperty());
+            background.fitHeightProperty().bind(scalableScene.heightProperty());
         }
 
-        stage.setScene(scene);
+        stage.setScene(scalableScene);
         stage.setTitle("DoorDasH: Scare vs Laugh Touchdown");
         stage.setMinWidth(900);
         stage.setMinHeight(650);
         stage.setOnCloseRequest(e -> shutdown());
         stage.show();
+        stage.setResizable(true);
 
         fadeIn(content);
         startPlaylist();
