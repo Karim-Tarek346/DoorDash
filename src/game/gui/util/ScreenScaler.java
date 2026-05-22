@@ -6,7 +6,7 @@ import javafx.scene.layout.Pane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.transform.Scale;
 
-public class ResolutionScaler {
+public class ScreenScaler {
 
     /**
      * Wraps your root layout in a scalable, centered scene.

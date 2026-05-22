@@ -69,8 +69,8 @@ public class MainMenu extends Application {
 
         root.getChildren().addAll(background, veil, content);
 
-        Scene scalableScene = game.gui.util.ResolutionScaler.createScalableScene(root, SCENE_W, SCENE_H);
-        stage.setScene(scalableScene);
+        Scene scalableScene = game.gui.util.ScreenScaler.createScalableScene(root, SCENE_W, SCENE_H);
+        //stage.setScene(scalableScene);
         if (background.getImage() != null) {
             background.fitWidthProperty().bind(scalableScene.widthProperty());
             background.fitHeightProperty().bind(scalableScene.heightProperty());

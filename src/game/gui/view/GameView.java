@@ -17,6 +17,8 @@ import game.engine.monsters.Monster;
 import game.gui.util.ResourceLocator;
 import game.gui.util.SoundManager;
 import game.gui.util.ThemedAlert;
+import game.gui.util.ScreenScaler; // <--- NEW IMPORT TO BYPASS ECLIPSE BUG
+
 import javafx.animation.PauseTransition;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -69,6 +71,9 @@ public class GameView {
     private VBox logBox;
     private boolean turnInProgress = false;
     private boolean gameEnded = false;
+    
+    private static final double SCENE_W = 1200;
+    private static final double SCENE_H = 800;
 
     public GameView(Stage stage, Role playerRole, Mode mode, Runnable onReturnToMenu) {
         this.stage = stage;
@@ -153,12 +158,13 @@ public class GameView {
 
         root.getChildren().add(layout);
 
-        Scene scene = new Scene(root, 1500, 880);
-        scene.setFill(Color.web("#03050e"));
+        // MODIFIED LINE: Uses the new bypassed scaler class
+        Scene scalableScene = ScreenScaler.createScalableScene(root, SCENE_W, SCENE_H);
+        scalableScene.setFill(Color.web("#03050e"));
 
-        wireActions(scene);
+        wireActions(scalableScene);
         beginGame();
-        return scene;
+        return scalableScene;
     }
 
     private void wireActions(Scene scene) {
@@ -181,9 +187,6 @@ public class GameView {
             } else if (mode == Mode.MULTIPLAYER) {
                 if (e.getCode() == KeyCode.ENTER) attemptRoll(game.getOpponent());
                 else if (e.getCode() == KeyCode.O) attemptPowerup(game.getOpponent());
-            }
-            if (e.getCode() == KeyCode.ESCAPE) {
-                // Pause via settings instead of hard-exit
             }
         });
     }
@@ -260,7 +263,6 @@ public class GameView {
         int prePos = who.getPosition();
         int intermediate = Math.min(Constants.BOARD_SIZE - 1, prePos + roll);
 
-        // Snapshot
         Monster opp = otherOf(who);
         int oppPrePos = opp.getPosition();
         int oppPreEnergy = opp.getEnergy();
@@ -271,7 +273,6 @@ public class GameView {
         boolean[] doorPreActivated = snapshotDoors();
         Role selfPreRole = who.getRole();
 
-        // Execute move via engine
         try {
             game.getBoard().moveMonster(who, roll, opp);
         } catch (InvalidMoveException ex) {
@@ -296,11 +297,8 @@ public class GameView {
 
         Cell landed = cellAt(intermediate);
 
-        // Step 1: animate move along path to intermediate
         boardView.animateMove(who, prePos, intermediate, () -> {
-            // Step 2: animate landing effect
             Runnable afterLanding = () -> {
-                // Step 3: any extra translocation (conveyor/sock/card teleport)
                 if (postPos != intermediate) {
                     boardView.animateMove(who, intermediate, postPos, () -> {
                         finalizeMove(who, opp, oppPrePos, oppPosDelta,
@@ -339,7 +337,6 @@ public class GameView {
     private void finalizeMove(Monster who, Monster opp, int oppPrePos, int oppPosDelta,
                               int selfDelta, int oppDelta) {
         if (oppPosDelta != 0) {
-            // Opponent moved (e.g., 2319 Alert)
             boardView.animateMove(opp, oppPrePos, opp.getPosition(), () ->
                     completeAfterAnimations(who, selfDelta, oppDelta));
         } else {
@@ -358,14 +355,11 @@ public class GameView {
     }
 
     private void advanceTurn() {
-        // Engine already advances internally via switchTurn in playTurn,
-        // but we use moveMonster directly so we must set current manually.
         game.setCurrent(otherOf(game.getCurrent()));
         turnInProgress = false;
         refreshTurnUi();
 
         if (game.getCurrent() == game.getOpponent() && mode == Mode.SOLO && !gameEnded) {
-            // Bot plays automatically
             PauseTransition delay = new PauseTransition(Duration.millis(900));
             delay.setOnFinished(e -> botPlay());
             delay.play();
@@ -375,7 +369,6 @@ public class GameView {
     private void botPlay() {
         if (gameEnded) return;
         Monster bot = game.getOpponent();
-        // Optionally use powerup if affordable & worthwhile
         if (bot.getEnergy() >= Constants.POWERUP_COST + 200 && new Random().nextDouble() < 0.3) {
             try {
                 int selfPre = bot.getEnergy();
@@ -454,11 +447,9 @@ public class GameView {
     private Card detectDrawnCard(List<Card> deckPre) {
         List<Card> deckPost = Board.getCards();
         if (deckPost.size() < deckPre.size()) {
-            // One removed from front
             return deckPre.get(0);
         }
         if (deckPost.size() == deckPre.size()) {
-            // Possibly reshuffle then draw — best-effort
             return null;
         }
         return null;

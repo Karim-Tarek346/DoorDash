@@ -121,7 +121,7 @@ public class RoleSelectionView {
         root.getChildren().addAll(menuBg, scarerBg, laugherBg, veil, content);
         sceneRoot = root;
 
-        Scene scene = game.gui.util.ResolutionScaler.createScalableScene(root, SCENE_W, SCENE_H);
+        Scene scene = game.gui.util.ScreenScaler.createScalableScene(root, SCENE_W, SCENE_H);
         scene.setFill(Color.BLACK);
         
         return scene;
