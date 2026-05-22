@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/javafx/**)",
+      "Read(//c/Program Files/Java/**)",
+      "PowerShell(javac *)"
+    ]
+  }
+}
