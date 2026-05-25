@@ -313,6 +313,10 @@ public class BoardView extends StackPane {
         private final Cell cell;
         private final Rectangle base;
         private final Rectangle activatedTint;
+        private ImageView doorImageView;
+        private Image doorClosedImage;
+        private Image doorOpenImage;
+        private Text exhaustedX;
 
         CellView(int index, Cell cell) {
             this.index = index;
@@ -388,21 +392,34 @@ public class BoardView extends StackPane {
         private void addCellContent() {
             if (cell instanceof DoorCell) {
                 DoorCell d = (DoorCell) cell;
-                Image img;
                 if (index == Constants.WINNING_POSITION) {
-                    img = ResourceLocator.png("Boo's door.png");
+                    doorClosedImage = ResourceLocator.png("Boo's door.png");
+                    doorOpenImage = doorClosedImage;
                 } else if (d.getRole() == Role.SCARER) {
-                    img = ResourceLocator.png("Scare.png");
+                    doorClosedImage = ResourceLocator.png("Scare.png");
+                    doorOpenImage = ResourceLocator.png("Scare Open.png");
                 } else {
-                    img = ResourceLocator.png("Laugh.png");
+                    doorClosedImage = ResourceLocator.png("Laugh.png");
+                    doorOpenImage = ResourceLocator.png("Laugh Open.png");
                 }
-                if (img != null) {
-                    ImageView iv = new ImageView(img);
-                    iv.setFitWidth(CELL_SIZE - 14);
-                    iv.setFitHeight(CELL_SIZE - 18);
-                    iv.setPreserveRatio(true);
-                    StackPane.setAlignment(iv, Pos.CENTER);
-                    getChildren().add(iv);
+                if (doorClosedImage != null) {
+                    doorImageView = new ImageView(doorClosedImage);
+                    doorImageView.setFitWidth(CELL_SIZE - 14);
+                    doorImageView.setFitHeight(CELL_SIZE - 18);
+                    doorImageView.setPreserveRatio(true);
+                    StackPane.setAlignment(doorImageView, Pos.CENTER);
+                    getChildren().add(doorImageView);
+                }
+                if (index != Constants.WINNING_POSITION) {
+                    exhaustedX = new Text("✕");
+                    exhaustedX.setFont(Font.font("Verdana", FontWeight.BOLD, 32));
+                    exhaustedX.setFill(Color.web("#ff2a2a"));
+                    exhaustedX.setStroke(Color.web("#000"));
+                    exhaustedX.setStrokeWidth(1.2);
+                    exhaustedX.setEffect(new DropShadow(6, Color.web("#000c")));
+                    exhaustedX.setVisible(false);
+                    StackPane.setAlignment(exhaustedX, Pos.CENTER);
+                    getChildren().add(exhaustedX);
                 }
                 Text energy = new Text(String.valueOf(d.getEnergy()));
                 energy.setFont(Font.font("Verdana", FontWeight.BOLD, 10));
@@ -459,6 +476,10 @@ public class BoardView extends StackPane {
 
         void setActivated(boolean activated) {
             activatedTint.setOpacity(activated ? 0.55 : 0);
+            if (doorImageView != null && doorOpenImage != null && doorClosedImage != null) {
+                doorImageView.setImage(activated ? doorOpenImage : doorClosedImage);
+            }
+            if (exhaustedX != null) exhaustedX.setVisible(activated);
         }
 
         void flash(Color c) {

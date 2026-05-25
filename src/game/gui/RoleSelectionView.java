@@ -121,29 +121,28 @@ public class RoleSelectionView {
         root.getChildren().addAll(menuBg, scarerBg, laugherBg, veil, content);
         sceneRoot = root;
 
-        Scene scene = game.gui.util.ScreenScaler.createScalableScene(root, SCENE_W, SCENE_H);
+        Scene scene = new Scene(root, SCENE_W, SCENE_H, true, SceneAntialiasing.BALANCED);
         scene.setFill(Color.BLACK);
-        
+
+        bindBackgrounds(scene);
         return scene;
     }
-    
 
     public static void launchStandalone(Stage stage, Consumer<Role> onChosen) {
         RoleSelectionView view = new RoleSelectionView(onChosen);
         stage.setScene(view.buildScene());
         stage.setTitle("DoorDasH — Choose Your Side");
-        stage.setResizable(true);
         stage.show();
     }
 
-//    private void bindBackgrounds(Scene scene) {
-//        for (ImageView iv : new ImageView[]{menuBg, scarerBg, laugherBg}) {
-//            if (iv.getImage() != null) {
-//                iv.fitWidthProperty().bind(scene.widthProperty());
-//                iv.fitHeightProperty().bind(scene.heightProperty());
-//            }
-//        }
-//    }
+    private void bindBackgrounds(Scene scene) {
+        for (ImageView iv : new ImageView[]{menuBg, scarerBg, laugherBg}) {
+            if (iv.getImage() != null) {
+                iv.fitWidthProperty().bind(scene.widthProperty());
+                iv.fitHeightProperty().bind(scene.heightProperty());
+            }
+        }
+    }
 
     private ImageView backgroundImage(String filename, double initialOpacity) {
         ImageView iv = new ImageView();

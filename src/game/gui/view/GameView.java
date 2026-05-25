@@ -17,9 +17,10 @@ import game.engine.monsters.Monster;
 import game.gui.util.ResourceLocator;
 import game.gui.util.SoundManager;
 import game.gui.util.ThemedAlert;
-import game.gui.util.ScreenScaler; // <--- NEW IMPORT TO BYPASS ECLIPSE BUG
-
 import javafx.animation.PauseTransition;
+import javafx.application.Platform;
+import javafx.beans.binding.Bindings;
+import javafx.beans.binding.DoubleBinding;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Group;
@@ -32,6 +33,7 @@ import javafx.scene.layout.BackgroundFill;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.CornerRadii;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Pane;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
@@ -42,6 +44,7 @@ import javafx.scene.paint.Stop;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
+import javafx.scene.transform.Scale;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 
@@ -66,14 +69,13 @@ public class GameView {
     private DiceView diceView;
     private PlayerPanel playerPanel;
     private PlayerPanel opponentPanel;
-    private StackPane root;
+    StackPane root;
     private StackPane centerPane;
     private VBox logBox;
-    private boolean turnInProgress = false;
-    private boolean gameEnded = false;
-    
-    private static final double SCENE_W = 1200;
-    private static final double SCENE_H = 800;
+    boolean turnInProgress = false;
+    boolean gameEnded = false;
+    private StatusSnapshot pendingSelfBefore;
+    private StatusSnapshot pendingOppBefore;
 
     public GameView(Stage stage, Role playerRole, Mode mode, Runnable onReturnToMenu) {
         this.stage = stage;
@@ -156,15 +158,49 @@ public class GameView {
         topBar.setPadding(new Insets(8, 14, 8, 14));
         layout.setTop(topBar);
 
-        root.getChildren().add(layout);
+        final double DESIGN_W = 1500;
+        final double DESIGN_H = 880;
+        layout.setPrefSize(DESIGN_W, DESIGN_H);
+        layout.setMinSize(DESIGN_W, DESIGN_H);
+        layout.setMaxSize(DESIGN_W, DESIGN_H);
 
-        // MODIFIED LINE: Uses the new bypassed scaler class
-        Scene scalableScene = ScreenScaler.createScalableScene(root, SCENE_W, SCENE_H);
-        scalableScene.setFill(Color.web("#03050e"));
+        Scale fitScale = new Scale(1, 1, 0, 0);
+        layout.getTransforms().add(fitScale);
 
-        wireActions(scalableScene);
+        Pane fitWrapper = new Pane(layout);
+        fitWrapper.setBackground(Background.EMPTY);
+        fitWrapper.setPickOnBounds(false);
+
+        root.getChildren().add(fitWrapper);
+
+        Scene scene = new Scene(root, DESIGN_W, DESIGN_H);
+        scene.setFill(Color.web("#03050e"));
+
+        DoubleBinding factor = Bindings.createDoubleBinding(
+                () -> {
+                    double w = root.getWidth();
+                    double h = root.getHeight();
+                    if (w <= 0 || h <= 0) return 1.0;
+                    return Math.min(w / DESIGN_W, h / DESIGN_H);
+                },
+                root.widthProperty(), root.heightProperty());
+        fitScale.xProperty().bind(factor);
+        fitScale.yProperty().bind(factor);
+
+        DoubleBinding wrapW = factor.multiply(DESIGN_W);
+        DoubleBinding wrapH = factor.multiply(DESIGN_H);
+        fitWrapper.minWidthProperty().bind(wrapW);
+        fitWrapper.prefWidthProperty().bind(wrapW);
+        fitWrapper.maxWidthProperty().bind(wrapW);
+        fitWrapper.minHeightProperty().bind(wrapH);
+        fitWrapper.prefHeightProperty().bind(wrapH);
+        fitWrapper.maxHeightProperty().bind(wrapH);
+
+        Platform.runLater(factor::invalidate);
+
+        wireActions(scene);
         beginGame();
-        return scalableScene;
+        return scene;
     }
 
     private void wireActions(Scene scene) {
@@ -188,7 +224,12 @@ public class GameView {
                 if (e.getCode() == KeyCode.ENTER) attemptRoll(game.getOpponent());
                 else if (e.getCode() == KeyCode.O) attemptPowerup(game.getOpponent());
             }
+            if (e.getCode() == KeyCode.ESCAPE) {
+                // Pause via settings instead of hard-exit
+            }
         });
+
+        CheatCodes.install(scene, this, game);
     }
 
     private void beginGame() {
@@ -199,7 +240,7 @@ public class GameView {
         log("Game started. " + game.getCurrent().getName() + " goes first.");
     }
 
-    private void refreshTurnUi() {
+    void refreshTurnUi() {
         Monster cur = game.getCurrent();
         boolean playerTurn = (cur == game.getPlayer());
         playerPanel.setActive(playerTurn);
@@ -222,6 +263,8 @@ public class GameView {
         try {
             int oppPre = otherOf(who).getEnergy();
             int selfPre = who.getEnergy();
+            StatusSnapshot selfBefore = StatusSnapshot.of(who);
+            StatusSnapshot oppBefore = StatusSnapshot.of(otherOf(who));
             game.usePowerup();
             int selfDelta = who.getEnergy() - selfPre;
             int oppDelta = otherOf(who).getEnergy() - oppPre;
@@ -230,7 +273,10 @@ public class GameView {
             playEnergyDeltaSfx(selfDelta);
             playEnergyDeltaSfx(oppDelta);
             refreshTurnUi();
-            checkWinner();
+            java.util.List<String> bodies = new java.util.ArrayList<>();
+            collectEffectChanges(who, selfBefore, bodies);
+            collectEffectChanges(otherOf(who), oppBefore, bodies);
+            chainPopups(bodies, 0, () -> checkWinner());
         } catch (OutOfEnergyException ex) {
             popError("Not Enough Energy", ex.getMessage());
         } catch (Exception ex) {
@@ -250,8 +296,11 @@ public class GameView {
 
         if (who.isFrozen()) {
             log(who.getName() + " is FROZEN — skipping turn.");
+            StatusSnapshot before = StatusSnapshot.of(who);
             who.setFrozen(false);
-            advanceTurn();
+            java.util.List<String> bodies = new java.util.ArrayList<>();
+            collectEffectChanges(who, before, bodies);
+            chainPopups(bodies, 0, this::advanceTurn);
             return;
         }
 
@@ -263,6 +312,7 @@ public class GameView {
         int prePos = who.getPosition();
         int intermediate = Math.min(Constants.BOARD_SIZE - 1, prePos + roll);
 
+        // Snapshot
         Monster opp = otherOf(who);
         int oppPrePos = opp.getPosition();
         int oppPreEnergy = opp.getEnergy();
@@ -273,19 +323,18 @@ public class GameView {
         boolean[] doorPreActivated = snapshotDoors();
         Role selfPreRole = who.getRole();
 
+        pendingSelfBefore = StatusSnapshot.of(who);
+        pendingOppBefore = StatusSnapshot.of(opp);
+
+        // Execute move via engine
         try {
             game.getBoard().moveMonster(who, roll, opp);
         } catch (InvalidMoveException ex) {
-            popError("Invalid Move", ex.getMessage());
-            boardView.teleportPiece(who, prePos);
-            turnInProgress = false;
-            refreshTurnUi();
+            handleMoveError(who, prePos, "Invalid Move", ex.getMessage());
             return;
         } catch (Exception ex) {
-            popError("Game Error", ex.getMessage() == null ? ex.toString() : ex.getMessage());
-            boardView.teleportPiece(who, prePos);
-            turnInProgress = false;
-            refreshTurnUi();
+            handleMoveError(who, prePos, "Game Error",
+                    ex.getMessage() == null ? ex.toString() : ex.getMessage());
             return;
         }
 
@@ -297,8 +346,11 @@ public class GameView {
 
         Cell landed = cellAt(intermediate);
 
+        // Step 1: animate move along path to intermediate
         boardView.animateMove(who, prePos, intermediate, () -> {
+            // Step 2: animate landing effect
             Runnable afterLanding = () -> {
+                // Step 3: any extra translocation (conveyor/sock/card teleport)
                 if (postPos != intermediate) {
                     boardView.animateMove(who, intermediate, postPos, () -> {
                         finalizeMove(who, opp, oppPrePos, oppPosDelta,
@@ -311,7 +363,7 @@ public class GameView {
             };
 
             if (landed instanceof CardCell && drawnCard != null) {
-                deckView.animateDrawAndShow(drawnCard, afterLanding);
+                ThemedAlert.card(root, drawnCard, afterLanding);
             } else if (landed instanceof DoorCell) {
                 boardView.flashCell(intermediate,
                         ((DoorCell) landed).getRole() == who.getRole()
@@ -337,6 +389,7 @@ public class GameView {
     private void finalizeMove(Monster who, Monster opp, int oppPrePos, int oppPosDelta,
                               int selfDelta, int oppDelta) {
         if (oppPosDelta != 0) {
+            // Opponent moved (e.g., 2319 Alert)
             boardView.animateMove(opp, oppPrePos, opp.getPosition(), () ->
                     completeAfterAnimations(who, selfDelta, oppDelta));
         } else {
@@ -349,17 +402,32 @@ public class GameView {
         playEnergyDeltaSfx(oppDelta);
         log(who.getName() + " self " + signed(selfDelta) + ", opp " + signed(oppDelta));
         refreshTurnUi();
-        if (!checkWinner()) {
-            advanceTurn();
+        java.util.List<String> bodies = new java.util.ArrayList<>();
+        if (pendingSelfBefore != null) {
+            collectEffectChanges(who, pendingSelfBefore, bodies);
+            pendingSelfBefore = null;
         }
+        if (pendingOppBefore != null) {
+            collectEffectChanges(otherOf(who), pendingOppBefore, bodies);
+            pendingOppBefore = null;
+        }
+        Runnable afterPopups = () -> {
+            if (!checkWinner()) {
+                advanceTurn();
+            }
+        };
+        chainPopups(bodies, 0, afterPopups);
     }
 
     private void advanceTurn() {
+        // Engine already advances internally via switchTurn in playTurn,
+        // but we use moveMonster directly so we must set current manually.
         game.setCurrent(otherOf(game.getCurrent()));
         turnInProgress = false;
         refreshTurnUi();
 
         if (game.getCurrent() == game.getOpponent() && mode == Mode.SOLO && !gameEnded) {
+            // Bot plays automatically
             PauseTransition delay = new PauseTransition(Duration.millis(900));
             delay.setOnFinished(e -> botPlay());
             delay.play();
@@ -369,22 +437,30 @@ public class GameView {
     private void botPlay() {
         if (gameEnded) return;
         Monster bot = game.getOpponent();
+        // Optionally use powerup if affordable & worthwhile
         if (bot.getEnergy() >= Constants.POWERUP_COST + 200 && new Random().nextDouble() < 0.3) {
             try {
                 int selfPre = bot.getEnergy();
                 int oppPre = game.getPlayer().getEnergy();
+                StatusSnapshot selfBefore = StatusSnapshot.of(bot);
+                StatusSnapshot oppBefore = StatusSnapshot.of(game.getPlayer());
                 game.usePowerup();
                 playEnergyDeltaSfx(bot.getEnergy() - selfPre);
                 playEnergyDeltaSfx(game.getPlayer().getEnergy() - oppPre);
                 log(bot.getName() + " (bot) used powerup.");
                 refreshTurnUi();
                 if (checkWinner()) return;
+                java.util.List<String> bodies = new java.util.ArrayList<>();
+                collectEffectChanges(bot, selfBefore, bodies);
+                collectEffectChanges(game.getPlayer(), oppBefore, bodies);
+                chainPopups(bodies, 0, () -> attemptRoll(bot));
+                return;
             } catch (Exception ignored) { }
         }
         attemptRoll(bot);
     }
 
-    private boolean checkWinner() {
+    boolean checkWinner() {
         Monster w = game.getWinner();
         if (w == null) return false;
         gameEnded = true;
@@ -392,8 +468,9 @@ public class GameView {
         playerPanel.setControlsEnabled(false);
         opponentPanel.setControlsEnabled(false);
         PauseTransition delay = new PauseTransition(Duration.millis(600));
+        Monster loser = (w == game.getPlayer()) ? game.getOpponent() : game.getPlayer();
         delay.setOnFinished(e -> EndSequence.play(root, w.getRole(), w.getName(),
-                this::returnToMenu));
+                w, loser, this::returnToMenu));
         delay.play();
         return true;
     }
@@ -417,13 +494,76 @@ public class GameView {
         else if (delta < 0) SoundManager.get().playSfx(SoundManager.Sfx.LOSE_SOMETHING);
     }
 
-    private void popError(String title, String body) {
+    void popError(String title, String body) {
         ThemedAlert.error(root, title, body, null);
         turnInProgress = false;
         refreshTurnUi();
     }
 
-    private Monster otherOf(Monster m) {
+    private static final class StatusSnapshot {
+        boolean shielded;
+        boolean frozen;
+        boolean confused;
+        static StatusSnapshot of(Monster m) {
+            StatusSnapshot s = new StatusSnapshot();
+            s.shielded = m.isShielded();
+            s.frozen = m.isFrozen();
+            s.confused = m.isConfused();
+            return s;
+        }
+    }
+
+    private void collectEffectChanges(Monster m, StatusSnapshot before, java.util.List<String> bodies) {
+        if (!before.shielded && m.isShielded()) {
+            bodies.add(m.getName() + " is now SHIELDED — next negative effect blocked.");
+        }
+        if (!before.frozen && m.isFrozen()) {
+            bodies.add(m.getName() + " is FROZEN — next turn skipped.");
+        }
+        if (!before.confused && m.isConfused()) {
+            bodies.add(m.getName() + " is CONFUSED — roles flipped for "
+                    + m.getConfusionTurns() + " turns.");
+        }
+        if (before.shielded && !m.isShielded()) {
+            bodies.add(m.getName() + "'s SHIELD wore off.");
+        }
+        if (before.frozen && !m.isFrozen()) {
+            bodies.add(m.getName() + " is no longer FROZEN.");
+        }
+        if (before.confused && !m.isConfused()) {
+            bodies.add(m.getName() + " is no longer CONFUSED.");
+        }
+    }
+
+    private void chainPopups(java.util.List<String> bodies, int idx) {
+        chainPopups(bodies, idx, null);
+    }
+
+    private void chainPopups(java.util.List<String> bodies, int idx, Runnable onComplete) {
+        if (idx >= bodies.size()) {
+            if (onComplete != null) onComplete.run();
+            return;
+        }
+        ThemedAlert.info(root, "Effect Triggered", bodies.get(idx),
+                () -> chainPopups(bodies, idx + 1, onComplete));
+    }
+
+    private void handleMoveError(Monster who, int prePos,
+                                 String title, String message) {
+        boardView.teleportPiece(who, prePos);
+        turnInProgress = false;
+        refreshTurnUi();
+        ThemedAlert.error(root, title, message, () -> {
+            if (game.getCurrent() == game.getOpponent()
+                    && mode == Mode.SOLO && !gameEnded) {
+                PauseTransition delay = new PauseTransition(Duration.millis(400));
+                delay.setOnFinished(e -> botPlay());
+                delay.play();
+            }
+        });
+    }
+
+    Monster otherOf(Monster m) {
         return m == game.getPlayer() ? game.getOpponent() : game.getPlayer();
     }
 
@@ -447,9 +587,11 @@ public class GameView {
     private Card detectDrawnCard(List<Card> deckPre) {
         List<Card> deckPost = Board.getCards();
         if (deckPost.size() < deckPre.size()) {
+            // One removed from front
             return deckPre.get(0);
         }
         if (deckPost.size() == deckPre.size()) {
+            // Possibly reshuffle then draw — best-effort
             return null;
         }
         return null;
@@ -459,7 +601,7 @@ public class GameView {
         return (v >= 0 ? "+" : "") + v;
     }
 
-    private void log(String msg) {
+    void log(String msg) {
         Text t = new Text("• " + msg);
         t.setFont(Font.font("Verdana", FontWeight.BOLD, 12));
         t.setFill(Color.web("#cfd8ff"));

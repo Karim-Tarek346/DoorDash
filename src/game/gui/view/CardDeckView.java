@@ -146,23 +146,24 @@ public class CardDeckView extends Pane {
         Color top, bot, accent, text;
         String typeName;
         String iconText;
+        text = Color.web("#ffffff");
         if (card instanceof ShieldCard) {
-            top = Color.web("#5ab0e8"); bot = Color.web("#1a4a8a"); accent = Color.web("#0a1a3a"); text = Color.web("#ffffff");
+            top = Color.web("#5ab0e8"); bot = Color.web("#1a4a8a"); accent = Color.web("#cfe8ff");
             typeName = "SHIELD"; iconText = "⛨";
         } else if (card instanceof SwapperCard) {
-            top = Color.web("#60e090"); bot = Color.web("#1a6030"); accent = Color.web("#0a2010"); text = Color.web("#0a2010");
+            top = Color.web("#40c070"); bot = Color.web("#0a4020"); accent = Color.web("#d0ffe0");
             typeName = "SWAPPER"; iconText = "⇄";
         } else if (card instanceof EnergyStealCard) {
-            top = Color.web("#ec5060"); bot = Color.web("#601020"); accent = Color.web("#ffd8d0"); text = Color.web("#fff7c8");
+            top = Color.web("#ec5060"); bot = Color.web("#601020"); accent = Color.web("#ffd8d0");
             typeName = "ENERGY STEAL"; iconText = "⚡";
         } else if (card instanceof StartOverCard) {
-            top = Color.web("#ffc040"); bot = Color.web("#8a4810"); accent = Color.web("#2a1808"); text = Color.web("#2a1808");
+            top = Color.web("#e8a020"); bot = Color.web("#603810"); accent = Color.web("#fff0c0");
             typeName = "START OVER"; iconText = "↺";
         } else if (card instanceof ConfusionCard) {
-            top = Color.web("#a060d8"); bot = Color.web("#3a1860"); accent = Color.web("#f0d8ff"); text = Color.web("#ffffff");
+            top = Color.web("#a060d8"); bot = Color.web("#3a1860"); accent = Color.web("#f0d8ff");
             typeName = "CONFUSION"; iconText = "✺";
         } else {
-            top = Color.web("#cccccc"); bot = Color.web("#333333"); accent = Color.web("#ffffff"); text = Color.web("#ffffff");
+            top = Color.web("#cccccc"); bot = Color.web("#333333"); accent = Color.web("#ffffff");
             typeName = "CARD"; iconText = "?";
         }
 
@@ -197,19 +198,20 @@ public class CardDeckView extends Pane {
         icon.setLayoutY(150);
 
         Text name = new Text(card != null ? card.getName() : "");
-        name.setFont(Font.font("Verdana", FontWeight.BOLD, 17));
+        name.setFont(Font.font("Verdana", FontWeight.BOLD, 18));
         name.setFill(text);
-        name.setEffect(new DropShadow(3, Color.web("#0008")));
+        name.setEffect(new DropShadow(5, Color.web("#000c")));
         name.setLayoutX(PORTRAIT_W / 2 - name.getBoundsInLocal().getWidth() / 2);
-        name.setLayoutY(200);
+        name.setLayoutY(220);
 
         Text desc = new Text(card != null ? card.getDescription() : "");
-        desc.setFont(Font.font("Verdana", 13));
+        desc.setFont(Font.font("Verdana", FontWeight.BOLD, 13));
         desc.setFill(text);
+        desc.setEffect(new DropShadow(4, Color.web("#000c")));
         desc.setWrappingWidth(PORTRAIT_W - 36);
         desc.setTextAlignment(TextAlignment.CENTER);
         desc.setLayoutX(18);
-        desc.setLayoutY(230);
+        desc.setLayoutY(250);
 
         g.getChildren().addAll(r, bevel, type, icon, name, desc);
         return g;
@@ -255,15 +257,6 @@ public class CardDeckView extends Pane {
         front.setOpacity(0);
         getChildren().add(front);
 
-        if (blurTarget != null) {
-            Timeline blurIn = new Timeline(
-                    new KeyFrame(Duration.millis(400),
-                            new KeyValue(blurEffect.widthProperty(), 12),
-                            new KeyValue(blurEffect.heightProperty(), 12)));
-            blurTarget.setEffect(blurEffect);
-            blurIn.play();
-        }
-
         double centerX = getPrefWidth() / 2 - PORTRAIT_W / 2;
         double centerY = -PORTRAIT_H / 2 + 80;
 
@@ -307,14 +300,6 @@ public class CardDeckView extends Pane {
         SequentialTransition full = new SequentialTransition(rise, flip1, flip2, show, exit);
         full.setOnFinished(e -> {
             getChildren().removeAll(back, front);
-            if (blurTarget != null) {
-                Timeline blurOut = new Timeline(
-                        new KeyFrame(Duration.millis(300),
-                                new KeyValue(blurEffect.widthProperty(), 0),
-                                new KeyValue(blurEffect.heightProperty(), 0)));
-                blurOut.setOnFinished(ev -> blurTarget.setEffect(null));
-                blurOut.play();
-            }
             if (onDone != null) onDone.run();
         });
 

@@ -45,6 +45,7 @@ public class PlayerPanel extends VBox {
     private final Text typeText;
     private final Text roleText;
     private final Text energyLabel;
+    private final Text positionText;
     private final Rectangle energyFill;
     private final Rectangle energyTrack;
     private final Text statusText;
@@ -108,63 +109,66 @@ public class PlayerPanel extends VBox {
         roleText.setFont(Font.font("Verdana", FontWeight.BOLD, 13));
         roleText.setFill(edgeColor);
 
-        // Canister visual
-        StackPane canisterStack = new StackPane();
-        canisterStack.setPrefSize(110, 150);
-        canisterStack.setAlignment(Pos.CENTER);
-
+        // Canister image (smaller, 5px clear of panel border on each side)
+        final double innerWidth = 240 - 24;          // panel pref width minus horizontal padding
+        final double canisterWidth = innerWidth - 10; // 5px clear on each side
         Image canisterBg = ResourceLocator.png(
                 monster.getRole() == Role.SCARER ? "player scare.png" : "player laugh.png");
         ImageView canisterImg = new ImageView();
         if (canisterBg != null) {
             canisterImg.setImage(canisterBg);
-            canisterImg.setFitHeight(150);
+            canisterImg.setFitWidth(canisterWidth);
             canisterImg.setPreserveRatio(true);
         }
+        StackPane canisterStack = new StackPane(canisterImg);
+        canisterStack.setAlignment(Pos.CENTER);
 
-        Pane fillContainer = new Pane();
-        fillContainer.setPrefSize(36, 110);
-        fillContainer.setMaxSize(36, 110);
-        fillContainer.setMinSize(36, 110);
-
-        energyTrack = new Rectangle(36, 110);
-        energyTrack.setArcWidth(6);
-        energyTrack.setArcHeight(6);
+        // Horizontal energy bar (under the canister, same width)
+        final double barW = canisterWidth;
+        final double barH = 16;
+        energyTrack = new Rectangle(barW, barH);
+        energyTrack.setArcWidth(10);
+        energyTrack.setArcHeight(10);
         energyTrack.setFill(Color.web("#0a0a14"));
-        energyTrack.setStroke(Color.web("#000"));
-        energyTrack.setOpacity(0.65);
+        energyTrack.setStroke(edgeColor);
+        energyTrack.setStrokeWidth(1.5);
+        energyTrack.setOpacity(0.9);
 
-        energyFill = new Rectangle(36, 0);
-        energyFill.setArcWidth(6);
-        energyFill.setArcHeight(6);
+        energyFill = new Rectangle(0, barH);
+        energyFill.setArcWidth(10);
+        energyFill.setArcHeight(10);
         Color fillColor = monster.getRole() == Role.SCARER
                 ? Color.web("#ff3a3a") : Color.web("#3aff5a");
         Color fillDark = monster.getRole() == Role.SCARER
                 ? Color.web("#6a0a0a") : Color.web("#0a6a14");
-        energyFill.setFill(new LinearGradient(0, 0, 0, 1, true, CycleMethod.NO_CYCLE,
-                new Stop(0, fillColor.brighter()), new Stop(1, fillDark)));
+        energyFill.setFill(new LinearGradient(0, 0, 1, 0, true, CycleMethod.NO_CYCLE,
+                new Stop(0, fillDark), new Stop(1, fillColor.brighter())));
         energyFill.setEffect(new Glow(0.6));
-        energyFill.setY(110);
-        energyFill.setHeight(0);
+        energyFill.setWidth(0);
+
+        Pane energyBar = new Pane(energyTrack, energyFill);
+        energyBar.setPrefSize(barW, barH);
+        energyBar.setMinSize(barW, barH);
+        energyBar.setMaxSize(barW, barH);
 
         energyRatio.addListener((o, ov, nv) -> {
-            double h = 110 * Math.min(1, Math.max(0, nv.doubleValue()));
-            energyFill.setHeight(h);
-            energyFill.setY(110 - h);
+            double w = barW * Math.min(1, Math.max(0, nv.doubleValue()));
+            energyFill.setWidth(w);
         });
         energy.addListener((o, ov, nv) ->
                 energyRatio.set((double) nv.intValue() / Constants.WINNING_ENERGY));
         energy.set(monster.getEnergy());
-
-        fillContainer.getChildren().addAll(energyTrack, energyFill);
-
-        canisterStack.getChildren().addAll(fillContainer, canisterImg);
 
         energyLabel = new Text();
         energyLabel.textProperty().bind(Bindings.format("Energy: %d", energy));
         energyLabel.setFont(Font.font("Verdana", FontWeight.BOLD, 14));
         energyLabel.setFill(Color.web("#fff7c8"));
         energyLabel.setEffect(new DropShadow(3, Color.BLACK));
+
+        positionText = new Text("Position: " + monster.getPosition());
+        positionText.setFont(Font.font("Verdana", FontWeight.BOLD, 14));
+        positionText.setFill(Color.web("#cfe8ff"));
+        positionText.setEffect(new DropShadow(3, Color.BLACK));
 
         statusText = new Text("Ready");
         statusText.setFont(Font.font("Verdana", FontWeight.BOLD, 11));
@@ -178,7 +182,7 @@ public class PlayerPanel extends VBox {
         buttons.setAlignment(Pos.CENTER);
 
         getChildren().addAll(turnIndicator, portrait, nameText, typeText, roleText,
-                canisterStack, energyLabel, statusText, buttons);
+                canisterStack, energyBar, energyLabel, positionText, statusText, buttons);
     }
 
     private Button action(String text, Color accent) {
@@ -218,6 +222,7 @@ public class PlayerPanel extends VBox {
     public void refresh() {
         energy.set(monster.getEnergy());
         roleText.setText(roleLine());
+        positionText.setText("Position: " + monster.getPosition());
         StringBuilder st = new StringBuilder();
         if (monster.isFrozen()) st.append("Frozen ");
         if (monster.isShielded()) st.append("Shielded ");

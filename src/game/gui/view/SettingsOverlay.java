@@ -69,7 +69,7 @@ public class SettingsOverlay {
 
         StackPane veil = new StackPane();
         veil.setBackground(new Background(new BackgroundFill(
-                Color.rgb(0, 0, 10, 0.6), CornerRadii.EMPTY, Insets.EMPTY)));
+                Color.rgb(0, 0, 0, 0.88), CornerRadii.EMPTY, Insets.EMPTY)));
         veil.setPickOnBounds(true);
         veil.setOnMouseClicked(e -> {
             if (e.getTarget() == veil) hide(veil);
@@ -81,7 +81,7 @@ public class SettingsOverlay {
         card.setMaxWidth(440);
         card.setMaxHeight(480);
         card.setBackground(new Background(new BackgroundFill(
-                Color.web("#0a0e22", 0.97), new CornerRadii(16), Insets.EMPTY)));
+                ThemedAlert.cardGradient(), new CornerRadii(16), Insets.EMPTY)));
         card.setStyle("-fx-border-color: #6a8aff;"
                 + "-fx-border-width: 2.5;"
                 + "-fx-border-radius: 16;"

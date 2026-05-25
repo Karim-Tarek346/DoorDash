@@ -109,7 +109,13 @@ public class DiceView extends StackPane {
                     new KeyValue(dieGroup.scaleXProperty(), 1.0 + 0.15 * Math.sin(i * 1.3)),
                     new KeyValue(dieGroup.scaleYProperty(), 1.0 + 0.15 * Math.cos(i * 1.3))));
         }
-        int result = rand.nextInt(6) + 1;
+        int result;
+        if (CheatCodes.nextForcedRoll != null) {
+            result = Math.max(1, Math.min(6, CheatCodes.nextForcedRoll));
+            CheatCodes.nextForcedRoll = null;
+        } else {
+            result = rand.nextInt(6) + 1;
+        }
         currentValue = result;
         rollTl.getKeyFrames().add(new KeyFrame(Duration.millis(duration),
                 e -> {

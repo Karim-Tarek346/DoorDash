@@ -55,6 +55,10 @@ public abstract class Monster implements Comparable<Monster> {
 		this.energy = Math.max(Constants.MIN_ENERGY, energy);
 	}
 
+	public final void setEnergyExact(int value) {
+		this.energy = Math.max(Constants.MIN_ENERGY, value);
+	}
+
 	public int getPosition() {
 		return position;
 	}

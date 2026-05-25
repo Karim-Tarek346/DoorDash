@@ -18,7 +18,9 @@ import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.effect.DropShadow;
@@ -40,9 +42,6 @@ import javafx.scene.text.TextAlignment;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.util.Duration;
-
-import javafx.scene.control.Alert;
-import javafx.scene.control.ButtonType;
 
 public class MainMenu extends Application {
 
@@ -69,20 +68,18 @@ public class MainMenu extends Application {
 
         root.getChildren().addAll(background, veil, content);
 
-        Scene scalableScene = game.gui.util.ScreenScaler.createScalableScene(root, SCENE_W, SCENE_H);
-        //stage.setScene(scalableScene);
+        Scene scene = new Scene(root, SCENE_W, SCENE_H);
         if (background.getImage() != null) {
-            background.fitWidthProperty().bind(scalableScene.widthProperty());
-            background.fitHeightProperty().bind(scalableScene.heightProperty());
+            background.fitWidthProperty().bind(scene.widthProperty());
+            background.fitHeightProperty().bind(scene.heightProperty());
         }
 
-        stage.setScene(scalableScene);
+        stage.setScene(scene);
         stage.setTitle("DoorDasH: Scare vs Laugh Touchdown");
         stage.setMinWidth(900);
         stage.setMinHeight(650);
         stage.setOnCloseRequest(e -> shutdown());
         stage.show();
-        stage.setResizable(true);
 
         fadeIn(content);
         startPlaylist();

@@ -1,6 +1,7 @@
 package game.gui.view;
 
 import game.engine.Role;
+import game.engine.monsters.Monster;
 import game.gui.util.SoundManager;
 import javafx.animation.FadeTransition;
 import javafx.animation.KeyFrame;
@@ -34,15 +35,17 @@ public class EndSequence {
             "A Katakito Schocolade production.\n\n"
                     + "Team members:\n"
                     + "Carlos Emad\n"
-                    + "Karim Tarek\n"
+                    + "Karim Tarek Khalil\n"
                     + "Omar Ahmed\n"
                     + "Mohamed Mostafa\n\n"
                     + "Under the supervision of:\n"
-                    + "Dr. Prof. Slim Abdennadher\n"
-                    + "Dr. Nada Farid\n\n"
+                    + "Prof. Dr. Slim Abdennadher\n"
+                    + "Dr. Nada Farid\n"
+                    + "Dr. Youssef Raafat\n\n"
                     + "Press ESC to return to main menu";
 
     public static void play(StackPane host, Role winnerRole, String winnerName,
+                            Monster winner, Monster loser,
                             Runnable onReturnToMenu) {
         SoundManager.get().stopAll();
         SoundManager.get().playSfx(
@@ -80,7 +83,25 @@ public class EndSequence {
         subWin.setEffect(new DropShadow(8, Color.BLACK));
         subWin.setOpacity(0);
 
-        VBox winBlock = new VBox(20, winText, subWin);
+        Text energyHeader = new Text("Final Energy");
+        energyHeader.setFont(Font.font("Verdana", FontWeight.BOLD, 18));
+        energyHeader.setFill(Color.web("#ffd84d"));
+        energyHeader.setEffect(new DropShadow(6, Color.BLACK));
+        energyHeader.setOpacity(0);
+
+        Text winnerEnergy = new Text(winner.getName() + ": " + winner.getEnergy());
+        winnerEnergy.setFont(Font.font("Verdana", FontWeight.BOLD, 18));
+        winnerEnergy.setFill(Color.web("#ffffff"));
+        winnerEnergy.setEffect(new DropShadow(6, Color.BLACK));
+        winnerEnergy.setOpacity(0);
+
+        Text loserEnergy = new Text(loser.getName() + ": " + loser.getEnergy());
+        loserEnergy.setFont(Font.font("Verdana", FontWeight.BOLD, 18));
+        loserEnergy.setFill(Color.web("#cfd8ff"));
+        loserEnergy.setEffect(new DropShadow(6, Color.BLACK));
+        loserEnergy.setOpacity(0);
+
+        VBox winBlock = new VBox(16, winText, subWin, energyHeader, winnerEnergy, loserEnergy);
         winBlock.setAlignment(Pos.CENTER);
         winContainer.getChildren().setAll(winBlock);
 
@@ -97,6 +118,21 @@ public class EndSequence {
             fadeInSub.setToValue(1);
             fadeInSub.setDelay(Duration.millis(400));
 
+            FadeTransition fadeInEnergyHeader = new FadeTransition(Duration.seconds(1.0), energyHeader);
+            fadeInEnergyHeader.setFromValue(0);
+            fadeInEnergyHeader.setToValue(1);
+            fadeInEnergyHeader.setDelay(Duration.millis(900));
+
+            FadeTransition fadeInWinE = new FadeTransition(Duration.seconds(1.0), winnerEnergy);
+            fadeInWinE.setFromValue(0);
+            fadeInWinE.setToValue(1);
+            fadeInWinE.setDelay(Duration.millis(1100));
+
+            FadeTransition fadeInLoseE = new FadeTransition(Duration.seconds(1.0), loserEnergy);
+            fadeInLoseE.setFromValue(0);
+            fadeInLoseE.setToValue(1);
+            fadeInLoseE.setDelay(Duration.millis(1300));
+
             PauseTransition hold = new PauseTransition(Duration.seconds(3.2));
 
             FadeTransition fadeOutText = new FadeTransition(Duration.seconds(1.5), winText);
@@ -105,12 +141,30 @@ public class EndSequence {
             FadeTransition fadeOutSub = new FadeTransition(Duration.seconds(1.5), subWin);
             fadeOutSub.setFromValue(1);
             fadeOutSub.setToValue(0);
+            FadeTransition fadeOutEnergyHeader = new FadeTransition(Duration.seconds(1.5), energyHeader);
+            fadeOutEnergyHeader.setFromValue(1);
+            fadeOutEnergyHeader.setToValue(0);
+            FadeTransition fadeOutWinE = new FadeTransition(Duration.seconds(1.5), winnerEnergy);
+            fadeOutWinE.setFromValue(1);
+            fadeOutWinE.setToValue(0);
+            FadeTransition fadeOutLoseE = new FadeTransition(Duration.seconds(1.5), loserEnergy);
+            fadeOutLoseE.setFromValue(1);
+            fadeOutLoseE.setToValue(0);
 
             SequentialTransition seq = new SequentialTransition(
                     fadeInText, hold, fadeOutText);
             fadeInSub.play();
+            fadeInEnergyHeader.play();
+            fadeInWinE.play();
+            fadeInLoseE.play();
             fadeOutSub.setDelay(Duration.seconds(4.4));
             fadeOutSub.play();
+            fadeOutEnergyHeader.setDelay(Duration.seconds(4.4));
+            fadeOutEnergyHeader.play();
+            fadeOutWinE.setDelay(Duration.seconds(4.4));
+            fadeOutWinE.play();
+            fadeOutLoseE.setDelay(Duration.seconds(4.4));
+            fadeOutLoseE.play();
             seq.setOnFinished(ev -> {
                 host.getChildren().remove(winContainer);
                 rollCredits(host, onReturnToMenu);
